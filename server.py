@@ -26,6 +26,31 @@ except Exception as e:
     lr_model = dt_model = rf_model = gb_model = None
     metrics = {}
 
+
+def configure_model_runtime(model):
+    """Disable parallel prediction workers that can fail in some Windows environments."""
+    if model is None:
+        return
+
+    classifier = model
+    if hasattr(model, 'named_steps'):
+        classifier = model.named_steps.get('classifier', model)
+
+    if hasattr(classifier, 'n_jobs'):
+        classifier.n_jobs = 1
+
+
+for loaded_model in (lr_model, dt_model, rf_model, gb_model):
+    configure_model_runtime(loaded_model)
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
+    return response
+
 def engineer_features(df_input):
     df_input = df_input.copy()
     # Same logic as app.py/train_models.py
@@ -66,13 +91,17 @@ def index():
 
 @app.route('/api/stats')
 def get_stats():
+    import numpy as np
+    import sklearn
     stats = {
         'total_orders': len(df),
         'on_time_rate': float(1 - df['is_delayed'].mean()),
         'avg_delivery': float(df['actual_days'].mean()),
         'revenue': float(df['final_price_inr'].sum()),
         'metrics': metrics,
-        'model_load_error': model_load_error
+        'model_load_error': model_load_error,
+        'numpy_version': np.__version__,
+        'sklearn_version': sklearn.__version__
     }
     return jsonify(stats)
 
@@ -105,16 +134,27 @@ def get_analytics():
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    data = request.json
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({'error': 'Missing JSON request body'}), 400
+
     # Build raw input
     raw = pd.DataFrame([data])
+
+    if 'final_price_inr' not in raw.columns:
+        discount_percent = float(data.get('discount_percent', 0) or 0)
+        product_price = float(data.get('product_price_inr', 0) or 0)
+        raw['final_price_inr'] = [product_price * (1 - discount_percent / 100)]
     
     # Fill in automated features
     warehouse_id = data.get('warehouse_id', 'WH001')
     order_date = pd.to_datetime(data.get('order_date', '2023-11-24'))
     
     wh_load = df[(df['warehouse_id'] == warehouse_id) & (df['order_date'].dt.date == order_date.date())].shape[0]
-    if wh_load == 0: wh_load = df[df['warehouse_id'] == warehouse_id].groupby('order_date').size().mean()
+    if wh_load == 0:
+        wh_load = df[df['warehouse_id'] == warehouse_id].groupby('order_date').size().mean()
+    if pd.isna(wh_load):
+        wh_load = 0
     raw['warehouse_load'] = [wh_load]
     
     wh_risk = df.groupby('warehouse_id')['is_delayed'].mean().to_dict()
@@ -128,13 +168,17 @@ def predict():
     if lr_model is None:
         return jsonify({'error': 'Models not loaded', 'details': model_load_error}), 503
 
-    res = {
-        'LR': float(lr_model.predict_proba(input_df)[0][1]),
-        'DT': float(dt_model.predict_proba(input_df)[0][1]),
-        'RF': float(rf_model.predict_proba(input_df)[0][1]),
-        'GB': float(gb_model.predict_proba(input_df)[0][1]),
-        'GB_Threshold': gb_threshold
-    }
+    try:
+        res = {
+            'LR': float(lr_model.predict_proba(input_df)[0][1]),
+            'DT': float(dt_model.predict_proba(input_df)[0][1]),
+            'RF': float(rf_model.predict_proba(input_df)[0][1]),
+            'GB': float(gb_model.predict_proba(input_df)[0][1]),
+            'GB_Threshold': gb_threshold
+        }
+    except Exception as exc:
+        return jsonify({'error': 'Prediction failed', 'details': str(exc)}), 500
+
     return jsonify(res)
 
 if __name__ == '__main__':
