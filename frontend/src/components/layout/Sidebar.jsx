@@ -27,7 +27,7 @@ export default function Sidebar() {
           </div>
           <div>
             <p className="font-bold text-white text-sm leading-none">Flipkart</p>
-            <p className="text-xs text-gray-500 mt-0.5">Logistics AI</p>
+            <p className="text-xs text-gray-500 mt-0.5">Logistics Dashboard</p>
           </div>
         </div>
       </div>
