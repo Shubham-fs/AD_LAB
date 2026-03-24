@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flipkart Logistics AI Dashboard · Shubham Kumar</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0c14; --card: #13131f; --card-border: #1e1e30;
+      --text: #e2e2e8; --text-dim: #7a7a8e; --text-muted: #4a4a5e;
+      --brand: #f97316; --brand-dim: rgba(249,115,22,0.15);
+      --green: #22c55e; --green-dim: rgba(34,197,94,0.15);
+      --red: #ef4444; --red-dim: rgba(239,68,68,0.15);
+      --blue: #3b82f6; --blue-dim: rgba(59,130,246,0.15);
+      --purple: #a855f7; --purple-dim: rgba(168,85,247,0.15);
+      --yellow: #eab308; --yellow-dim: rgba(234,179,8,0.15);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* Layout */
+    .app { display:flex; height:100vh; overflow:hidden; }
+    .sidebar { width:220px; background:var(--card); border-right:1px solid var(--card-border); display:flex; flex-direction:column; flex-shrink:0; }
+    .main { flex:1; overflow-y:auto; padding:24px 28px; }
+    .logo { padding:20px; border-bottom:1px solid var(--card-border); display:flex; align-items:center; gap:10px; }
+    .logo-icon { width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg,var(--brand),#ea580c); display:flex; align-items:center; justify-content:center; font-size:14px; }
+    .logo-text { font-weight:700; font-size:13px; }
+    .logo-sub { font-size:10px; color:var(--text-dim); }
+
+    /* Nav */
+    .nav { flex:1; padding:12px 10px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:500; color:var(--text-dim); cursor:pointer; transition:all .2s; margin-bottom:2px; border:1px solid transparent; }
+    .nav-item:hover { color:var(--text); background:rgba(255,255,255,0.03); }
+    .nav-item.active { color:var(--brand); background:var(--brand-dim); border-color:rgba(249,115,22,0.2); }
+
+    /* Header */
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+    .page-title { font-size:22px; font-weight:800; }
+    .page-sub { font-size:12px; color:var(--text-dim); margin-top:2px; }
+    .live-badge { display:flex; align-items:center; gap:6px; background:var(--green-dim); border:1px solid rgba(34,197,94,0.2); padding:5px 12px; border-radius:8px; font-size:11px; font-weight:600; color:var(--green); }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* Cards */
+    .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+    .kpi { background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:20px; transition:all .25s; }
+    .kpi:hover { border-color:rgba(255,255,255,0.08); transform:translateY(-2px); }
+    .kpi-label { font-size:11px; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+    .kpi-value { font-size:28px; font-weight:800; margin:6px 0 4px; }
+    .kpi-sub { font-size:11px; color:var(--text-muted); }
+    .kpi-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; margin-bottom:10px; }
+
+    /* Chart containers */
+    .chart-grid { display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:24px; }
+    .chart-card { background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:20px; }
+    .chart-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+    .chart-sub { font-size:11px; color:var(--text-dim); margin-bottom:16px; }
+
+    /* Table */
+    .table-card { background:var(--card); border:1px solid var(--card-border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+    .table-header { padding:20px; border-bottom:1px solid var(--card-border); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { text-align:left; padding:10px 16px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); border-bottom:1px solid var(--card-border); }
+    td { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.03); }
+    tr:hover td { background:rgba(255,255,255,0.02); }
+
+    /* Badges */
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+    .badge-green { background:var(--green-dim); color:var(--green); }
+    .badge-red { background:var(--red-dim); color:var(--red); }
+    .badge-yellow { background:var(--yellow-dim); color:var(--yellow); }
+
+    /* Progress bar */
+    .progress-bg { height:8px; background:rgba(255,255,255,0.05); border-radius:6px; overflow:hidden; }
+    .progress-fill { height:100%; border-radius:6px; transition:width 1s ease; }
+
+    /* Prediction form */
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+    .form-group label { display:block; font-size:11px; color:var(--text-dim); font-weight:600; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.3px; }
+    .form-control { width:100%; background:#1a1a28; border:1px solid var(--card-border); border-radius:10px; padding:10px 14px; color:var(--text); font-size:13px; font-family:inherit; outline:none; transition:border .2s; }
+    .form-control:focus { border-color:var(--brand); }
+    .btn { padding:12px 24px; border:none; border-radius:10px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .2s; }
+    .btn-primary { background:var(--brand); color:#fff; }
+    .btn-primary:hover { background:#ea580c; transform:translateY(-1px); }
+    .btn-primary:active { transform:scale(0.98); }
+
+    /* Prediction result */
+    .result-card { background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:24px; text-align:center; }
+    .result-icon { font-size:48px; margin-bottom:8px; }
+    .result-title { font-size:20px; font-weight:800; margin-bottom:4px; }
+    .result-sub { font-size:12px; color:var(--text-dim); }
+
+    /* Model cards row */
+    .model-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+    .model-card { background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:18px; }
+    .model-name { font-size:12px; font-weight:700; margin-bottom:12px; }
+    .model-stat { display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; }
+    .model-stat-label { color:var(--text-dim); }
+    .model-stat-value { font-weight:700; }
+
+    /* Page sections */
+    .page { display:none; }
+    .page.active { display:block; }
+
+    /* Responsive */
+    @media(max-width:900px) {
+      .sidebar { display:none; }
+      .kpi-grid,.model-grid { grid-template-columns:repeat(2,1fr); }
+      .chart-grid { grid-template-columns:1fr; }
+    }
+
+    /* Animations */
+    @keyframes scan { 0%, 100% { top: 0%; opacity: 0; } 50% { top: 100%; opacity: 1; } }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes shine { 0% { left: -100%; } 100% { left: 100%; } }
+    @keyframes pulse-neon { 0%, 100% { box-shadow: 0 0 5px var(--brand-dim), 0 0 10px var(--brand-dim); } 50% { box-shadow: 0 0 15px var(--brand), 0 0 25px var(--brand-dim); } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      </div>
+      <div><div class="logo-text">Flipkart</div><div class="logo-sub">Logistics AI</div></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="showPage('dashboard',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('shipments',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+        Shipments
+      </div>
+      <div class="nav-item" onclick="showPage('prediction',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Z"></path><path d="M12 8A4 4 0 1 0 16 12A4 4 0 0 0 12 8Z"></path></svg>
+        ML Prediction
+      </div>
+      <div class="nav-item" onclick="showPage('analytics',this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        Analytics
+      </div>
+    </nav>
+    <div style="padding:16px;border-top:1px solid var(--card-border);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--brand));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">K</div>
+        <div><div style="font-size:12px;font-weight:600;">Shubham Kumar</div><div style="font-size:10px;color:var(--text-dim)">Roll: 23053305</div></div>
+        <div style="margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--green);"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- ───── DASHBOARD ───── -->
+    <div id="page-dashboard" class="page active">
+
+      <!-- Welcome Banner -->
+      <div style="background:linear-gradient(135deg,rgba(249,115,22,0.15) 0%,rgba(168,85,247,0.1) 50%,rgba(59,130,246,0.1) 100%);border:1px solid rgba(249,115,22,0.2);border-radius:16px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:26px;font-weight:800;margin-bottom:4px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+            Welcome, Shubham Kumar
+          </div>
+          <div style="font-size:14px;color:var(--text-dim);">Roll No: <span style="color:var(--brand);font-weight:700;">23053305</span></div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Flipkart Logistics Management & Delay Prediction System · Capstone Project</div>
+        </div>
+        <div class="live-badge"><div class="live-dot"></div>Live</div>
+      </div>
+
+      <div class="header">
+        <div><div class="page-title">Smart Dashboard</div><div class="page-sub">15,000 total orders · Real-time overview</div></div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-icon" style="background:var(--blue-dim);color:var(--blue)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          </div>
+          <div class="kpi-label">Total Orders</div>
+          <div id="totalOrders" class="kpi-value" style="color:var(--blue)">15,000</div>
+          <div class="kpi-sub">Total Context</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-icon" style="background:var(--green-dim);color:var(--green)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+          <div class="kpi-label">On-Time Rate</div>
+          <div id="onTimePerc" class="kpi-value" style="color:var(--green)">58.2%</div>
+          <div class="kpi-sub">Success Rate</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-icon" style="background:var(--red-dim);color:var(--red)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <div class="kpi-label">Problematic Categories</div>
+          <div id="shipCountLabel" class="kpi-value" style="color:var(--red)">8 Types</div>
+          <div class="kpi-sub">High delay items</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-icon" style="background:var(--purple-dim);color:var(--purple)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <div class="kpi-label">Avg Delivery Time</div>
+          <div id="avgDelay" class="kpi-value" style="color:var(--purple)">3.7d</div>
+          <div class="kpi-sub">Mean actual days</div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Delivery Trends (Last 30 Days)</div>
+          <div class="chart-sub">Daily order volume vs delayed shipments</div>
+          <canvas id="trendChart" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Delivery Ratio</div>
+          <div class="chart-sub">On-time vs Delayed split</div>
+          <canvas id="pieChart" height="160"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Delays by Zone</div>
+          <div class="chart-sub">Regional delay distribution</div>
+          <canvas id="zoneChart" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">ML Model F1 Scores</div>
+          <div class="chart-sub">Performance comparison</div>
+          <div id="modelBars" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───── SHIPMENTS ───── -->
+    <div id="page-shipments" class="page">
+      <div class="header">
+        <div><div class="page-title">Shipment Tracking</div><div class="page-sub">Sample of 200 orders from 15,000-row dataset</div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-header" style="display:flex;gap:10px;align-items:center;">
+          <input type="text" id="shipSearch" placeholder="Search by Order ID or City…" class="form-control" style="max-width:300px;" onkeyup="filterShipments()">
+          <select id="statusFilter" class="form-control" style="max-width:140px;" onchange="filterShipments()">
+            <option value="all">All Status</option><option value="On-Time">On-Time</option><option value="Delayed">Delayed</option><option value="In-Transit">In-Transit</option>
+          </select>
+          <span id="shipCount" style="margin-left:auto;font-size:11px;color:var(--text-dim);"></span>
+        </div>
+        <table>
+          <thead><tr><th>Order ID</th><th>Source</th><th>Destination</th><th>Zone</th><th>Mode</th><th>Status</th><th>Delay</th></tr></thead>
+          <tbody id="shipBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ───── PREDICTION ───── -->
+    <div id="page-prediction" class="page">
+      <div class="header">
+        <div><div class="page-title">ML Prediction Panel</div><div class="page-sub">Shubham Kumar · 23053305 · 4-model ensemble delay prediction</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="chart-card">
+          <div class="chart-title" style="margin-bottom:16px;display:flex;align-items:center;gap:6px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            Enter Order Details
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label>Warehouse ID</label><select id="pWhId" class="form-control"><option value="WH001">WH001 (Mumbai)</option><option value="WH002">WH002 (Delhi)</option><option value="WH003">WH003 (Bangalore)</option><option value="WH004">WH004 (Kolkata)</option><option value="WH005">WH005 (Chennai)</option></select></div>
+            <div class="form-group"><label>Shipping Mode</label><select id="pMode" class="form-control"><option>Standard</option><option>Express</option><option>Same-Day</option></select></div>
+            <div class="form-group"><label>Product Category</label><select id="pCat" class="form-control"><option>Electronics</option><option>Fashion</option><option>Home & Kitchen</option><option>Beauty</option><option>Sports</option></select></div>
+            <div class="form-group"><label>Promised Days</label><input id="pDays" type="number" class="form-control" value="3" min="1" max="15"></div>
+            <div class="form-group"><label>Weight (grams)</label><input id="pWeight" type="number" class="form-control" value="1200" min="10"></div>
+            <div class="form-group"><label>Price (INR)</label><input id="pPrice" type="number" class="form-control" value="5000" min="10"></div>
+            <div class="form-group"><label>Order Hour</label><input id="pHour" type="number" class="form-control" value="14" min="0" max="23"></div>
+            <div class="form-group"><label>Customer Rating</label><input id="pRating" type="number" class="form-control" value="3.5" min="1" max="5" step="0.1"></div>
+            <div class="form-group"><label>Order Day</label><select id="pDay" class="form-control"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
+            <div class="form-group"><label>Weather Conditions</label><select id="pWeather" class="form-control"><option>Clear</option><option>Rain</option><option>Fog</option><option>Storm</option></select></div>
+            <div class="form-group"><label>Traffic Load</label><select id="pTraffic" class="form-control"><option>Light</option><option>Moderate</option><option>Heavy</option></select></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;" onclick="runPrediction()">🔮 Run Prediction</button>
+        </div>
+        <div>
+          <div id="predResult" class="result-card" style="margin-bottom:16px; position:relative; overflow:hidden; background:rgba(20,20,35,0.8); backdrop-filter:blur(12px); border:1px solid rgba(249,115,22,0.3); animation:pulse-neon 3s infinite;">
+            <!-- Scanner Line -->
+            <div style="position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg, transparent, var(--brand), transparent); z-index:10; animation:scan 2s linear infinite; pointer-events:none;"></div>
+            
+            <!-- Shimmer effect -->
+            <div style="position:absolute; top:0; bottom:0; width:50%; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent); transform:skewX(-25deg); animation:shine 3s infinite; pointer-events:none;"></div>
+
+            <div style="position:relative; z-index:2;">
+              <!-- ID Avatar -->
+              <div style="width:70px; height:70px; margin:0 auto 15px; background:linear-gradient(135deg, var(--card-border), var(--bg)); border:2px solid var(--card-border); border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:32px; box-shadow:0 8px 16px rgba(0,0,0,0.4); position:relative;">
+                🧑‍💻
+                <div style="position:absolute; bottom:-5px; right:-5px; width:24px; height:24px; background:var(--green); border:3px solid var(--card); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">✓</div>
+              </div>
+
+              <div style="font-size:20px; font-weight:800; color:white; letter-spacing:-0.5px; margin-bottom:4px;">Shubham Kumar</div>
+              <div style="display:inline-block; padding:2px 12px; background:rgba(249,115,22,0.1); border:1px solid rgba(249,115,22,0.3); border-radius:6px; font-family:monospace; color:var(--brand); font-weight:700; font-size:13px; margin-bottom:20px;">ID: 23053305</div>
+
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:20px;">
+                <div style="padding:6px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--card-border);">
+                  <div style="font-size:9px; color:var(--text-dim);">STATUS</div>
+                  <div style="font-size:10px; font-weight:700; color:var(--green);">ACTIVE</div>
+                </div>
+                <div style="padding:6px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--card-border);">
+                  <div style="font-size:9px; color:var(--text-dim);">LEVEL</div>
+                  <div style="font-size:10px; font-weight:700; color:var(--blue);">ELITE</div>
+                </div>
+                <div style="padding:6px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--card-border);">
+                  <div style="font-size:9px; color:var(--text-dim);">TYPE</div>
+                  <div style="font-size:10px; font-weight:700; color:var(--purple);">ADMIN</div>
+                </div>
+              </div>
+
+              <div style="font-size:12px; color:var(--text-dim); line-height:1.5;">
+                AI Core Initialization Sequence: <br>
+                <span style="color:var(--brand); font-weight:700; animation:pulse 1s infinite;">READY FOR PREDICTION</span>
+              </div>
+            </div>
+          </div>
+          <div class="model-grid" style="grid-template-columns:1fr 1fr;" id="predModels"></div>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-top:20px;">
+        <div class="chart-title">Model Performance Reference</div>
+        <table style="margin-top:10px;">
+          <thead><tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1-Score</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;">Logistic Regression</td><td>85.2%</td><td>85.3%</td><td>78.0%</td><td style="color:var(--blue);font-weight:700;">81.5%</td></tr>
+            <tr><td style="font-weight:600;">Decision Tree</td><td>81.3%</td><td>79.0%</td><td>75.2%</td><td style="color:var(--purple);font-weight:700;">77.1%</td></tr>
+            <tr style="background:rgba(34,197,94,0.05);"><td style="font-weight:600;">Random Forest ⭐</td><td>88.8%</td><td>88.9%</td><td>83.6%</td><td style="color:var(--green);font-weight:700;">86.2%</td></tr>
+            <tr><td style="font-weight:600;">Gradient Boosting</td><td>87.2%</td><td>85.6%</td><td>83.2%</td><td style="color:var(--brand);font-weight:700;">84.4%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ───── ANALYTICS ───── -->
+    <div id="page-analytics" class="page">
+      <div class="header">
+        <div><div class="page-title">Insights & Analytics</div><div class="page-sub">Deep dive into logistics performance</div></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Warehouse Performance</div>
+          <div class="chart-sub">On-time delivery rate per warehouse</div>
+          <canvas id="whChart" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Category Delay Rate</div>
+          <div class="chart-sub">Which categories delay most (%)</div>
+          <canvas id="catChart" height="160"></canvas>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <div class="chart-title" style="display:flex;align-items:center;gap:6px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Top Problematic Routes
+          </div>
+          <div class="chart-sub" style="margin-bottom:0;">Routes with highest delay percentages</div>
+        </div>
+        <table>
+          <thead><tr><th>Rank</th><th>Route</th><th>Orders</th><th>Delay %</th><th>Avg Delay</th><th>Risk</th></tr></thead>
+          <tbody>
+            <tr><td>#1</td><td>Delhi → Mumbai</td><td>1,240</td><td><div class="progress-bg" style="width:80px;display:inline-block;vertical-align:middle;margin-right:6px;"><div class="progress-fill" style="width:47%;background:var(--red);"></div></div>47%</td><td>2.8d</td><td><span class="badge badge-red">High</span></td></tr>
+            <tr><td>#2</td><td>Bangalore → Delhi</td><td>980</td><td><div class="progress-bg" style="width:80px;display:inline-block;vertical-align:middle;margin-right:6px;"><div class="progress-fill" style="width:42%;background:var(--red);"></div></div>42%</td><td>3.1d</td><td><span class="badge badge-red">High</span></td></tr>
+            <tr><td>#3</td><td>Mumbai → Kolkata</td><td>870</td><td><div class="progress-bg" style="width:80px;display:inline-block;vertical-align:middle;margin-right:6px;"><div class="progress-fill" style="width:39%;background:var(--yellow);"></div></div>39%</td><td>2.6d</td><td><span class="badge badge-yellow">Medium</span></td></tr>
+            <tr><td>#4</td><td>Chennai → Pune</td><td>760</td><td><div class="progress-bg" style="width:80px;display:inline-block;vertical-align:middle;margin-right:6px;"><div class="progress-fill" style="width:36%;background:var(--yellow);"></div></div>36%</td><td>1.9d</td><td><span class="badge badge-yellow">Medium</span></td></tr>
+            <tr><td>#5</td><td>Hyderabad → Jaipur</td><td>650</td><td><div class="progress-bg" style="width:80px;display:inline-block;vertical-align:middle;margin-right:6px;"><div class="progress-fill" style="width:33%;background:var(--yellow);"></div></div>33%</td><td>2.2d</td><td><span class="badge badge-yellow">Medium</span></td></tr>
+            <tr><td>#6</td><td>Kolkata → Bhopal</td><td>590</td><td><div class="progress-bg" style="width:80px;display:inline-block;vertical-align:middle;margin-right:6px;"><div class="progress-fill" style="width:31%;background:var(--green);"></div></div>31%</td><td>2.0d</td><td><span class="badge badge-green">Low</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Navigation ──────────────────────────────────────────────────────
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── Chart defaults ──────────────────────────────────────────────────
+Chart.defaults.color = '#7a7a8e';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.font.size = 11;
+
+// ── Trend Line Chart ────────────────────────────────────────────────
+const days = Array.from({length:30},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-29+i); return d.toLocaleDateString('en',{month:'short',day:'numeric'}); });
+const orders = days.map(()=>Math.floor(Math.random()*240+380));
+const delayed = orders.map(o=>Math.floor(o*(0.35+Math.random()*0.15)));
+new Chart(document.getElementById('trendChart'),{
+  type:'line',
+  data:{
+    labels:days,
+    datasets:[
+      {label:'Orders',data:orders,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',fill:true,tension:0.4,pointRadius:0,borderWidth:2},
+      {label:'Delayed',data:delayed,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.05)',fill:true,tension:0.4,pointRadius:0,borderWidth:2},
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top',labels:{usePointStyle:true,pointStyle:'circle',padding:16}}},scales:{x:{grid:{display:false},ticks:{maxRotation:0,maxTicksLimit:8}},y:{beginAtZero:true}}}
+});
+
+// ── Charts & Data Persistence ───────────────────────────────────────
+let charts = {};
+
+async function loadAnalytics() {
+  try {
+    const res = await fetch('/api/analytics');
+    const data = await res.json();
+    
+    // 1. Pie Chart (Global On-Time) - Use stats for percentage
+    const statsRes = await fetch('/api/stats');
+    const stats = await statsRes.json();
+    const otPerc = stats.on_time_rate * 100;
+    
+    if(document.getElementById('pieChart')) {
+        new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: { labels: ['On-Time', 'Delayed'], datasets: [{ data: [otPerc, 100-otPerc], backgroundColor: ['#22c55e', '#ef4444'], borderWidth: 0, hoverOffset: 8 }] },
+            options: { responsive: true, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16 } } } }
+        });
+    }
+
+    // 2. Zone Bar Chart (Dashboard)
+    if(document.getElementById('zoneChart')) {
+        new Chart(document.getElementById('zoneChart'), {
+            type: 'bar',
+            data: {
+                labels: data.zone_counts.labels,
+                datasets: [
+                    { label: 'On-Time', data: data.zone_counts.on_time, backgroundColor: 'rgba(34,197,94,0.7)', borderRadius: 4, maxBarThickness: 24 },
+                    { label: 'Delayed', data: data.zone_counts.delayed, backgroundColor: 'rgba(239,68,68,0.7)', borderRadius: 4, maxBarThickness: 24 },
+                ]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16 } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+        });
+    }
+
+    // 3. Category Delay Rate (Analytics Page)
+    if(document.getElementById('catChart')) {
+        const catLabels = Object.keys(data.cat_delays);
+        const catData = Object.values(data.cat_delays).map(v => (v*100).toFixed(1));
+        const colors = ['#3b82f6', '#a855f7', '#f97316', '#06b6d4', '#ec4899', '#22c55e', '#eab308', '#8b5cf6'];
+        new Chart(document.getElementById('catChart'), {
+            type: 'bar',
+            data: { labels: catLabels, datasets: [{ label: 'Delay Rate %', data: catData, backgroundColor: catLabels.map((_,i) => colors[i % colors.length] + 'cc'), borderColor: catLabels.map((_,i) => colors[i % colors.length]), borderWidth: 1, borderRadius: 4, maxBarThickness: 22 }] },
+            options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { max: 60, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { callback: v => v+'%' } }, y: { grid: { display: false } } } }
+        });
+    }
+
+    // 4. Warehouse Performance (Analytics Page)
+    if(document.getElementById('whChart')) {
+        const whLabels = Object.keys(data.zone_delays);
+        const whData = Object.values(data.zone_delays).map(v => ((1-v)*100).toFixed(1));
+        const colors = ['#06b6d4', '#3b82f6', '#a855f7', '#8b5cf6', '#ec4899'];
+        new Chart(document.getElementById('whChart'), {
+            type: 'bar',
+            data: { labels: whLabels, datasets: [{ label: 'On-Time Rate %', data: whData, backgroundColor: whLabels.map((_,i) => colors[i % colors.length] + 'cc'), borderColor: whLabels.map((_,i) => colors[i % colors.length]), borderWidth: 1, borderRadius: 4, maxBarThickness: 28 }] },
+            options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { max: 100, grid: { display: false } }, y: { grid: { display: false } } } }
+        });
+    }
+
+
+    // 5. Model Metrics
+    const metrics = stats.metrics;
+    if(document.getElementById('modelBars') && metrics) {
+        const models = [
+            { name: 'Logistic Regression', f1: (metrics['Logistic Regression']['F1-Score']*100).toFixed(1), color: '#3b82f6' },
+            { name: 'Decision Tree', f1: (metrics['Decision Tree']['F1-Score']*100).toFixed(1), color: '#a855f7' },
+            { name: 'Random Forest', f1: (metrics['Random Forest']['F1-Score']*100).toFixed(1), color: '#22c55e' },
+            { name: 'Gradient Boosting', f1: (metrics['Gradient Boosting']['F1-Score']*100).toFixed(1), color: '#f97316' },
+        ];
+        document.getElementById('modelBars').innerHTML = models.map(m => `
+            <div style="margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;">
+                    <span style="color:var(--text-dim)">${m.name}</span>
+                    <span style="font-weight:700;">${m.f1}%</span>
+                </div>
+                <div class="progress-bg">
+                    <div class="progress-fill" style="width:${m.f1}%;background:${m.color};box-shadow:0 0 8px ${m.color}60;"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Update Problematic Categories KPI
+    const highRiskCount = Object.values(data.cat_delays).filter(v => v > 0.4).length;
+    if(document.getElementById('shipCountLabel')) {
+        document.getElementById('shipCountLabel').textContent = highRiskCount + ' Categories';
+    }
+
+  } catch(e) { console.error("Error loading analytics", e); }
+}
+
+
+
+// ── Shipment Table (Real Data) ──────────────────────────────────────
+let shipments = [];
+
+async function loadShipments() {
+  try {
+    const res = await fetch('/api/shipments');
+    shipments = await res.json();
+    filterShipments();
+  } catch(e) { console.error("Error loading shipments", e); }
+}
+
+function filterShipments(){
+  const q=document.getElementById('shipSearch').value.toLowerCase();
+  const sf=document.getElementById('statusFilter').value;
+  const filtered=shipments.filter(s=>{
+    if(sf!=='all'&&s.status!==sf) return false;
+    const id = (s.order_id || '').toString().toLowerCase();
+    const city = (s.warehouse_city || '').toLowerCase();
+    const state = (s.customer_state || '').toLowerCase();
+    if(q && !id.includes(q) && !city.includes(q) && !state.includes(q)) return false;
+    return true;
+  });
+  document.getElementById('shipCount').textContent=filtered.length+' shipments';
+  document.getElementById('shipBody').innerHTML=filtered.map(s=>`
+    <tr>
+      <td style="font-family:monospace;color:var(--brand);font-weight:600;font-size:12px;">${s.order_id}</td>
+      <td>${s.warehouse_city}</td><td>${s.customer_state}</td><td style="color:var(--text-dim)">${s.customer_zone}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${s.shipping_mode==='Express'?'var(--blue-dim)':s.shipping_mode==='Same-Day'?'var(--purple-dim)':'rgba(255,255,255,0.05)'};color:${s.shipping_mode==='Express'?'var(--blue)':s.shipping_mode==='Same-Day'?'var(--purple)':'var(--text-dim)'}">${s.shipping_mode}</span></td>
+      <td><span class="badge badge-${s.status==='On-Time'?'green':'red'}">● ${s.status}</span></td>
+      <td>${s.status==='Delayed'?'<span style="color:var(--red);font-weight:700;">+'+(s.actual_days || 0)+'d</span>':'<span style="color:var(--green)">—</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+
+// ── Prediction Logic ────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const res = await fetch('/api/stats');
+    const data = await res.json();
+    if(document.getElementById('totalOrders')) document.getElementById('totalOrders').textContent = data.total_orders.toLocaleString();
+    if(document.getElementById('onTimePerc')) document.getElementById('onTimePerc').textContent = (data.on_time_rate * 100).toFixed(1) + '%';
+    if(document.getElementById('avgDelay')) document.getElementById('avgDelay').textContent = data.avg_delivery.toFixed(1) + 'd';
+  } catch(e) { console.error("Error loading stats", e); }
+}
+
+async function initializeDashboard() {
+  // Use sequential try-catch so one doesn't kill the other
+  try { await loadStats(); } catch(e){}
+  try { await loadAnalytics(); } catch(e){}
+  try { await loadShipments(); } catch(e){}
+}
+window.addEventListener('load', initializeDashboard);
+
+async function runPrediction() {
+  const resultCard = document.getElementById('predResult');
+  const modelGrid = document.getElementById('predModels');
+  
+  // Collect inputs
+  const inputs = {
+    warehouse_id: document.getElementById('pWhId').value,
+    shipping_mode: document.getElementById('pMode').value,
+    product_category: document.getElementById('pCat').value,
+    promised_days: parseInt(document.getElementById('pDays').value),
+    product_weight_g: parseFloat(document.getElementById('pWeight').value),
+    product_price_inr: parseFloat(document.getElementById('pPrice').value),
+    discount_percent: 10,
+    order_hour: parseInt(document.getElementById('pHour').value),
+    customer_rating: parseFloat(document.getElementById('pRating').value),
+    order_weekday: document.getElementById('pDay').value,
+    weather_conditions: document.getElementById('pWeather').value,
+    traffic_conditions: document.getElementById('pTraffic').value,
+    delivery_attempts: 1, is_holiday: 0, is_weekend: 0, is_sale_period: 0,
+    customer_zone: 'North', customer_tier: 'Tier1', same_zone_delivery: 1,
+    payment_method: 'UPI', return_requested: 0, customer_state: 'Delhi',
+    order_date: new Date().toISOString().split('T')[0]
+  };
+  inputs.final_price_inr = inputs.product_price_inr * 0.9;
+  if (inputs.order_weekday === 'Saturday' || inputs.order_weekday === 'Sunday') {
+    inputs.is_weekend = 1;
+  }
+
+  // Scanning animation
+  resultCard.innerHTML = `
+    <div style="position:absolute; left:0; right:0; height:2px; background:var(--brand); animation:scan 1.5s linear infinite; z-index:100;"></div>
+    <div style="padding:40px; text-align:center; color:var(--brand); letter-spacing:2px; font-weight:800; font-size:14px;">
+      <i class="fas fa-satellite-dish fa-spin" style="font-size:30px; margin-bottom:15px; display:block;"></i>
+      ANALYZING STREAM...
+    </div>
+  `;
+  modelGrid.innerHTML = '';
+
+  try {
+    const response = await fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(inputs)
+    });
+    const scores = await response.json();
+    const isDelayed = scores.GB > scores.GB_Threshold;
+    const prob = scores.GB * 100;
+    
+    setTimeout(() => {
+      resultCard.innerHTML = `
+        <div style="position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg, transparent, ${isDelayed?'#ef4444':'var(--brand)'}, transparent); z-index:10; animation:scan 2s linear infinite; pointer-events:none;"></div>
+        <div style="position:relative; z-index:2;">
+          <div style="width:70px; height:70px; margin:0 auto 15px; background:linear-gradient(135deg, var(--card-border), var(--bg)); border:2px solid ${isDelayed?'#ef4444':'var(--card-border)'}; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:32px; box-shadow:0 0 20px ${isDelayed?'rgba(239,68,68,0.2)':'rgba(249,115,22,0.2)'};">
+            ${isDelayed ? '⚠️' : '📦'}
+          </div>
+          <div style="font-size:20px; font-weight:800; color:white; margin-bottom:4px;">Risk: <span style="color:${isDelayed?'#ef4444':'var(--green)'}">${isDelayed ? 'DELAYED' : 'ON-TIME'}</span></div>
+          <div style="display:inline-block; padding:2px 12px; background:rgba(255,255,255,0.05); border-radius:6px; font-family:monospace; color:var(--brand); font-size:13px; margin-bottom:20px; border:1px solid rgba(249,115,22,0.3);">PROBABILITY: ${prob.toFixed(1)}%</div>
+          <div style="font-size:11px; color:var(--text-dim);">
+            ENSEMBLE VOTE: <b style="color:white;">${(scores.GB > 0.5 ? 'DELAY' : 'OK')}</b> (Threshold: ${(scores.GB_Threshold*100).toFixed(0)}%)
+          </div>
+        </div>
+      `;
+      
+      const mods = [
+        { name: 'Logistic Regression', score: scores.LR, color: 'var(--blue)' },
+        { name: 'Random Forest', score: scores.RF, color: 'var(--green)' }
+      ];
+      
+      modelGrid.innerHTML = mods.map(m => `
+        <div class="model-card" style="padding:15px; background:rgba(255,255,255,0.02); border:1px solid var(--card-border);">
+          <div style="font-size:10px; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase;">${m.name}</div>
+          <div style="font-weight:700; color:${m.color}; font-size:16px;">${(m.score*100).toFixed(1)}%</div>
+          <div class="progress-bg" style="margin-top:8px; height:4px;">
+            <div class="progress-fill" style="width:${m.score*100}%; background:${m.color};"></div>
+          </div>
+        </div>
+      `).join('');
+    }, 1000);
+  } catch(e) {
+    resultCard.innerHTML = `<div style="padding:40px; color:#ef4444; font-size:12px;"><i class="fas fa-exclamation-triangle"></i> SERVER OFFLINE</div>`;
+  }
+}
+
+// Charts are now initialized dynamically in loadAnalytics()
+</script>
+</body>
+</html>
