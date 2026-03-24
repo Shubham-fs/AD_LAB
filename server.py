@@ -71,7 +71,8 @@ def get_stats():
         'on_time_rate': float(1 - df['is_delayed'].mean()),
         'avg_delivery': float(df['actual_days'].mean()),
         'revenue': float(df['final_price_inr'].sum()),
-        'metrics': metrics
+        'metrics': metrics,
+        'model_load_error': model_load_error
     }
     return jsonify(stats)
 
