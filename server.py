@@ -11,6 +11,7 @@ df = pd.read_csv('flipkart_logistics_dataset.csv')
 df['order_date'] = pd.to_datetime(df['order_date'])
 
 # Load ML artifacts
+model_load_error = None
 try:
     lr_model = joblib.load('lr_model.pkl')
     dt_model = joblib.load('dt_model.pkl')
@@ -20,8 +21,10 @@ try:
     with open('model_metrics.json', 'r') as f:
         metrics = json.load(f)
 except Exception as e:
+    model_load_error = str(e)
     print(f"Error loading models: {e}")
     lr_model = dt_model = rf_model = gb_model = None
+    metrics = {}
 
 def engineer_features(df_input):
     df_input = df_input.copy()
@@ -121,6 +124,9 @@ def predict():
     input_df = engineer_features(raw)[FEATURES]
     
     # Get predictions
+    if lr_model is None:
+        return jsonify({'error': 'Models not loaded', 'details': model_load_error}), 503
+
     res = {
         'LR': float(lr_model.predict_proba(input_df)[0][1]),
         'DT': float(dt_model.predict_proba(input_df)[0][1]),
