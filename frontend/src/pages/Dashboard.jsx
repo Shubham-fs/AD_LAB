@@ -141,39 +141,6 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Model F1 scores */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-          className="glass p-5">
-          <p className="section-title">ML Model F1 Scores</p>
-          <p className="section-sub">Performance comparison across algorithms</p>
-          <div className="space-y-4 mt-2">
-            {modelMetrics.map((m) => (
-              <div key={m.model}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-gray-400">{m.model}</span>
-                  <span className="font-bold text-white">{m.f1}%</span>
-                </div>
-                <div className="h-2 bg-surface-600 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${m.f1}%` }}
-                    transition={{ delay: 0.6, duration: 0.8, ease: 'easeOut' }}
-                    className="h-full rounded-full"
-                    style={{ background: m.color, boxShadow: `0 0 8px ${m.color}60` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 grid grid-cols-4 gap-2">
-            {modelMetrics.map(m => (
-              <div key={m.model} className="text-center p-2 rounded-xl" style={{ background: `${m.color}10`, border: `1px solid ${m.color}20` }}>
-                <p className="text-xs text-gray-500">Acc</p>
-                <p className="text-sm font-bold" style={{ color: m.color }}>{m.accuracy}%</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
       </div>
     </div>
   );

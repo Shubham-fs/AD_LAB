@@ -226,30 +226,7 @@ export default function Prediction() {
             )}
           </AnimatePresence>
 
-          {/* Model Metrics Table */}
-          <div className="glass p-5">
-            <p className="section-title text-sm">Model Performance Reference</p>
-            <table className="w-full text-xs mt-3">
-              <thead>
-                <tr className="border-b border-white/5 text-left">
-                  {['Model','Accuracy','Precision','Recall','F1'].map(h => (
-                    <th key={h} className="pb-2 text-gray-600 font-semibold uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {modelMetrics.map(m => (
-                  <tr key={m.model} className={m.model === 'Random Forest' ? 'bg-brand-500/5' : ''}>
-                    <td className="py-2.5 font-medium text-gray-300">{m.model}</td>
-                    <td className="py-2.5" style={{ color: m.color }}>{m.accuracy}%</td>
-                    <td className="py-2.5 text-gray-400">{m.precision}%</td>
-                    <td className="py-2.5 text-gray-400">{m.recall}%</td>
-                    <td className="py-2.5 font-bold" style={{ color: m.color }}>{m.f1}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
         </motion.div>
       </div>
     </div>

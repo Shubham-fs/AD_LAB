@@ -147,32 +147,7 @@ export default function Admin() {
         </motion.div>
       </div>
 
-      {/* Model Status Cards */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <FileText size={16} className="text-brand-400" />
-          <p className="section-title text-sm !mb-0">Deployed Model Status</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {modelMetrics.map((m) => (
-            <div key={m.model} className="rounded-xl p-4 border transition-all hover:border-white/20"
-              style={{ background: `${m.color}08`, borderColor: `${m.color}20` }}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-gray-300">{m.model}</p>
-                <span className="badge-green">Active</span>
-              </div>
-              <div className="space-y-1.5 text-xs">
-                {[['Accuracy', m.accuracy], ['F1-Score', m.f1], ['Precision', m.precision], ['Recall', m.recall]].map(([k,v]) => (
-                  <div key={k} className="flex justify-between">
-                    <span className="text-gray-600">{k}</span>
-                    <span className="font-bold" style={{ color: m.color }}>{v}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+
     </div>
   );
 }

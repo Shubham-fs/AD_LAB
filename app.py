@@ -308,45 +308,7 @@ def main():
                                "🔴 Delayed" if gb_pred == 1 else "🟢 On Time",
                                f"Prob: {gb_prob*100:.1f}%")
 
-        st.markdown("---")
-        st.markdown("### 🏆 Model Evaluation Metrics")
-        st.write("Metrics on the held-out 20% test set. Best model highlighted in **bold**.")
 
-        metrics_df = pd.DataFrame(metrics).T
-        display_cols = ['Accuracy', 'Precision', 'Recall', 'F1-Score']
-        metrics_display = metrics_df[display_cols].copy().astype(float)
-        metrics_display_pct = (metrics_display * 100).round(2).astype(str) + '%'
-        st.dataframe(metrics_display_pct, use_container_width=True)
-
-        # Bar chart comparison
-        mdf = metrics_display.reset_index().rename(columns={'index': 'Model'})
-        mdf_melt = mdf.melt(id_vars='Model', var_name='Metric', value_name='Score')
-        mdf_melt['Score_pct'] = (mdf_melt['Score'] * 100).round(2)
-        fig_bar = px.bar(mdf_melt, x='Model', y='Score_pct', color='Metric', barmode='group',
-                         title='Model Performance Comparison (%)',
-                         color_discrete_sequence=px.colors.qualitative.Bold)
-        fig_bar.add_hline(y=80, line_dash='dash', line_color='red',
-                          annotation_text='80% Target', annotation_position='top left')
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        st.markdown("### Confusion Matrices")
-        cm_models = [m for m in metrics.keys()]
-        cm_cols = st.columns(len(cm_models))
-
-        def plot_cm(cm, title):
-            text = [[str(y) for y in x] for x in cm]
-            fig = go.Figure(data=go.Heatmap(
-                z=cm, text=text, texttemplate="%{text}",
-                colorscale='Blues', showscale=False))
-            fig.update_layout(title=title, xaxis_title='Predicted', yaxis_title='Actual',
-                              height=300, margin=dict(l=20, r=20, t=40, b=20))
-            return fig
-
-        for col, model_name in zip(cm_cols, cm_models):
-            with col:
-                st.plotly_chart(
-                    plot_cm(metrics[model_name]['Confusion Matrix'], model_name),
-                    use_container_width=True)
 
 
 if __name__ == '__main__':
